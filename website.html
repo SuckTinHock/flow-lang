@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One" rel="stylesheet" type="text/css">
+
+<html lang="en">
+<head>
+    <title>Code Compiler</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <header>
+        <h1>
+            Welcome to Code Compiler
+        </h1>
+    </header>
+    <form>
+        <div>
+            <textarea type="text" id="code" required></textarea>
+        </div>
+        <div>
+            <textarea type="text" id="inp" placeholder="Input" class="inout"></textarea>
+            <textarea type="text" id="out" placeholder="Output" class="inout" readonly></textarea>
+        </div>
+        <div>
+            <label>
+                <input id="opt1" value="C++" type="radio" name="language" required />C++
+                <input id="opt2" value="Python" type="radio" name="language" required />Python
+                <input id="opt3" value="Pascal" type="radio" name="language" required />Pascal
+            </label>
+        </div>
+        <div>
+            <button type="submit">Submit your code</button>
+            <button type="reset">Clear all</button>
+        </div>
+        <div>
+            <h2 style="padding: 10px">Status</h2>
+        </div>
+        <div>
+            <textarea type="text" id="status" readonly></textarea>
+        </div>
+        <div>
+            <button type="button" class="box">Export</button>
+            <button type="button" class="box">Import</button>
+            <button type="button">Convert Flowchart to Code</button>
+        </div>
+    </form>
+    <script scr="script.js"></script>
+</body>
+</html>
