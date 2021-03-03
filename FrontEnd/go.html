@@ -1,0 +1,374 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Code Compiler</title>
+    <script src="release/go.js"></script>
+    <script src="Figure.js"></script>
+    <link href='https://fonts.googleapis.com/css?family=Lato:300,400,700' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One" rel="stylesheet" type="text/css">
+    <script type="text/javascript" id="code">
+        function init() {
+            var $ = go.GraphObject.make;
+
+            myDiagram =
+                $(go.Diagram, "myDiagramDiv",
+                    {
+                        "undoManager.isEnabled": true
+                    });
+
+            myDiagram.addDiagramListener("Modified", function (e) {
+                var button = document.getElementById("SaveButton");
+                if (button) button.disabled = !myDiagram.isModified;
+                var idx = document.title.indexOf("*");
+                if (myDiagram.isModified) {
+                    if (idx < 0) document.title += "*";
+                } else {
+                    if (idx >= 0) document.title = document.title.substr(0, idx);
+                }
+            });
+
+            function nodeStyle() {
+                return [
+                    new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
+                    {
+                        locationSpot: go.Spot.Center
+                    }
+                ];
+            }
+
+            function makePort(name, align, spot, output, input) {
+                var horizontal = align.equals(go.Spot.Top) || align.equals(go.Spot.Bottom);
+                return $(go.Shape,
+                    {
+                        fill: "transparent",
+                        strokeWidth: 0,
+                        width: horizontal ? NaN : 8,
+                        height: !horizontal ? NaN : 8,
+                        alignment: align,
+                        stretch: (horizontal ? go.GraphObject.Horizontal : go.GraphObject.Vertical),
+                        portId: name,
+                        fromSpot: spot,
+                        fromLinkable: output,
+                        toSpot: spot,
+                        toLinkable: input,
+                        cursor: "pointer",
+                        mouseEnter: function (e, port) {
+                            if (!e.diagram.isReadOnly) port.fill = "rgba(0,0,0,0.5)";
+                        },
+                        mouseLeave: function (e, port) {
+                            port.fill = "transparent";
+                        }
+                    });
+            }
+
+            function textStyle() {
+                return {
+                    font: "bold 11pt Lato, Helvetica, Arial, sans-serif",
+                    stroke: "black"
+                }
+            }
+
+            function text_edit() {
+                return {
+                    font: "bold 11pt Lato, Helvetica, Arial, sans-serif",
+                    stroke: "black",
+                    editable: true
+                }
+            }
+
+            myDiagram.nodeTemplateMap.add("Process",
+                $(go.Node, "Spot", nodeStyle(),
+                    $(go.Panel, "Spot",
+                        $(go.Shape, "Rectangle",
+                            { desiredSize: new go.Size(100, 50), fill: "white", stroke: "black", strokeWidth: 2 },
+                        ),
+                        $(go.TextBlock, "Process", textStyle(),
+                            new go.Binding("text")
+                        )
+                    ),
+                    makePort("T", go.Spot.Top, go.Spot.Top, false, true),
+                    makePort("B", go.Spot.Bottom, go.Spot.Bottom, true, false)
+                )
+            )
+
+            myDiagram.nodeTemplateMap.add("Input",
+                $(go.Node, "Spot", nodeStyle(),
+                    $(go.Panel, "Spot",
+                        $(go.Shape, "Parallelogram",
+                            { desiredSize: new go.Size(150, 50), fill: "rgb(185,185,185)", stroke: "black", strokeWidth: 2 },
+                        ),
+                        $(go.TextBlock, "Input", textStyle(),
+                            new go.Binding("text")
+                        )
+                    ),
+                    makePort("T", go.Spot.Top, go.Spot.Top, false, true),
+                    makePort("B", go.Spot.Bottom, go.Spot.Bottom, true, false)
+                )
+            )
+
+            myDiagram.nodeTemplateMap.add("Output",
+                $(go.Node, "Spot", nodeStyle(),
+                    $(go.Panel, "Spot",
+                        $(go.Shape, "Parallelogram",
+                            { desiredSize: new go.Size(150, 50), fill: "rgb(185,185,185)", stroke: "black", strokeWidth: 2 },
+                        ),
+                        $(go.TextBlock, "Output", textStyle(),
+                            new go.Binding("text")
+                        )
+                    ),
+                    makePort("T", go.Spot.Top, go.Spot.Top, false, true),
+                    makePort("B", go.Spot.Bottom, go.Spot.Bottom, true, false)
+                )
+            )
+
+            myDiagram.nodeTemplateMap.add("Decision",
+                $(go.Node, "Spot", nodeStyle(),
+                    $(go.Panel, "Spot",
+                        $(go.Shape, "Diamond",
+                            {
+                                desiredSize: new go.Size(160, 80),
+                                fill: "rgb(185,185,185)",
+                                stroke: "black",
+                                strokeWidth: 3.5
+                            },
+                            new go.Binding("figure", "figure")
+                        ),
+                        $(go.TextBlock, text_edit(),
+                            new go.Binding("text").makeTwoWay()
+                        ),
+                        $(go.TextBlock,
+                            {
+                                stroke: "green",
+                                text: 'T',
+                                alignment: go.Spot.Left,
+                                verticalAlignment: go.Spot.Top,
+                                height: 40,
+                                font: "25px"
+                            }
+                        ),
+                        $(go.TextBlock,
+                            {
+                                stroke: "red",
+                                text: 'F',
+                                alignment: go.Spot.Right,
+                                verticalAlignment: go.Spot.Top,
+                                height: 40,
+                                font: "25px"
+                            }
+                        )
+                    ),
+                    makePort("T", go.Spot.Top, go.Spot.Top, false, true),
+                    makePort("R", go.Spot.Right, go.Spot.Right, true, false),
+                    makePort("L", go.Spot.Left, go.Spot.Left, true, false)
+                ));
+
+            myDiagram.nodeTemplateMap.add("Start",
+                $(go.Node, "Spot", nodeStyle(),
+                    $(go.Panel, "Spot",
+                        $(go.Shape, "RoundedRectangle",
+                            { desiredSize: new go.Size(150, 50), fill: "white", stroke: "rgba(0,0,0,0.1)", strokeWidth: 10 }),
+                        $(go.TextBlock, "Start", textStyle(),
+                            new go.Binding("text"))
+                    ),
+                    makePort("B", go.Spot.Bottom, go.Spot.Bottom, true, false)
+                ));
+
+            myDiagram.nodeTemplateMap.add("End",
+                $(go.Node, "Spot", nodeStyle(),
+                    $(go.Panel, "Spot",
+                        $(go.Shape, "RoundedRectangle",
+                            { desiredSize: new go.Size(150, 50), fill: "white", stroke: "rgba(0,0,0,0.1)", strokeWidth: 10 }),
+                        $(go.TextBlock, "End", textStyle(),
+                            new go.Binding("text"))
+                    ),
+                    makePort("T", go.Spot.Top, go.Spot.Top, false, true),
+                ));
+
+            go.Shape.defineFigureGenerator("File", function (shape, w, h) {
+                var geo = new go.Geometry();
+                var fig = new go.PathFigure(0, 0, true); // starting point
+                geo.add(fig);
+                fig.add(new go.PathSegment(go.PathSegment.Line, .75 * w, 0));
+                fig.add(new go.PathSegment(go.PathSegment.Line, w, .25 * h));
+                fig.add(new go.PathSegment(go.PathSegment.Line, w, h));
+                fig.add(new go.PathSegment(go.PathSegment.Line, 0, h).close());
+                var fig2 = new go.PathFigure(.75 * w, 0, false);
+                geo.add(fig2);
+                // The Fold
+                fig2.add(new go.PathSegment(go.PathSegment.Line, .75 * w, .25 * h));
+                fig2.add(new go.PathSegment(go.PathSegment.Line, w, .25 * h));
+                geo.spot1 = new go.Spot(0, .25);
+                geo.spot2 = go.Spot.BottomRight;
+                return geo;
+            });
+
+            myDiagram.nodeTemplateMap.add("Comment",
+                $(go.Node, "Auto", nodeStyle(),
+                    $(go.Shape, "File",
+                        { fill: "#DEE0A3", stroke: "black", strokeWidth: 3 }),
+                    $(go.TextBlock, textStyle(),
+                        {
+                            margin: 8,
+                            maxSize: new go.Size(200, NaN),
+                            wrap: go.TextBlock.WrapFit,
+                            textAlign: "center",
+                            editable: true,
+                        },
+                        new go.Binding("text").makeTwoWay())
+                ));
+
+            myDiagram.linkTemplate =
+                $(go.Link,
+                    {
+                        routing: go.Link.AvoidsNodes,
+                        curve: go.Link.JumpOver,
+                        corner: 5, toShortLength: 4,
+                        relinkableFrom: true,
+                        relinkableTo: true,
+                        reshapable: true,
+                        resegmentable: true,
+                        mouseEnter: function (e, link) { link.findObject("HIGHLIGHT").stroke = "black"; },
+                        mouseLeave: function (e, link) { link.findObject("HIGHLIGHT").stroke = "transparent"; },
+                        selectionAdorned: false
+                    },
+                    new go.Binding("points").makeTwoWay(),
+                    $(go.Shape,  // the highlight shape, normally transparent
+                        { isPanelMain: true, strokeWidth: 8, stroke: "transparent", name: "HIGHLIGHT" }),
+                    $(go.Shape,  // the link path shape
+                        { isPanelMain: true, stroke: "white", strokeWidth: 3 },
+                        new go.Binding("stroke", "isSelected", function (sel) { return "white"; }).ofObject()),
+                    $(go.Shape,  // the arrowhead
+                        { toArrow: "standard", strokeWidth: 0, fill: "white" }),
+                    $(go.Panel, "Auto",  // the link label, normally not visible
+                        { visible: false, name: "LABEL", segmentIndex: 2, segmentFraction: 0.5 },
+                        new go.Binding("visible", "visible").makeTwoWay(),
+                        $(go.Shape, "RoundedRectangle",  // the label shape
+                            { fill: "#F8F8F8", strokeWidth: 0 }),
+                        new go.Binding("text").makeTwoWay())
+                );
+
+
+            myDiagram.toolManager.linkingTool.temporaryLink.routing = go.Link.Orthogonal;
+            myDiagram.toolManager.relinkingTool.temporaryLink.routing = go.Link.Orthogonal;
+
+            myPalette =
+                $(go.Palette, "myPaletteDiv",
+                    {
+
+                        nodeTemplateMap: myDiagram.nodeTemplateMap,
+                        model: new go.GraphLinksModel([
+                            { category: "Start", text: "Start" },
+                            { category: "Input", text: "Input" },
+                            { category: "Process", text: "Process" },
+                            { category: "Decision", text: "Decision" },
+                            { category: "Output", text: "Output" },
+                            { category: "End", text: "End" },
+                            { category: "Comment", text: "Comment" }
+                        ])
+                    });
+
+        }
+
+
+        function save() {
+            document.getElementById("mySavedModel").value = myDiagram.model.toJson();
+            myDiagram.isModified = false;
+        }
+        function load() {
+            myDiagram.model = go.Model.fromJson(document.getElementById("mySavedModel").value);
+        }
+
+        function Dclear() {
+            myDiagram.clear();
+            document.getElementById('ScriptCode').value = '';
+        }
+
+        /*function printDiagram() {
+            var svgWindow = window.open();
+            var printSize = new go.Size(700, 960);
+            var bnds = myDiagram.documentBounds;
+            var x = bnds.x;
+            var y = bnds.y;
+            while (y < bnds.bottom) {
+                while (x < bnds.right) {
+                    var svg = myDiagram.makeSvg({ scale: 1.0, position: new go.Point(x, y), size: printSize });
+                    svgWindow.document.body.appendChild(svg);
+                    x += printSize.width;
+                }
+                x = bnds.x;
+                y += printSize.height;
+            }
+            setTimeout(function () { svgWindow.print(); }, 1);
+        } */
+    </script>
+</head>
+<body onload="init()" style="background-color: #69758A">
+    <div>
+        <h1 style="font-family:Alfa Slab One; font-size: 50px">Welcome to Code Compiler</h1>
+    </div>
+    <div id="sample">
+        <div style="width: 100%; display: flex; justify-content: space-between">
+            <div id="myPaletteDiv" style="width: 200px; margin-right: 2px; background-color: #282c34; overflow-y:auto"></div>
+            <div id="myDiagramDiv" style="flex-grow: 1; height: 1000px; background-color: #282c34;"></div>
+        </div>
+        <button id="SaveButton" onclick="save()">Save</button>
+        <button onclick="load()">Load</button>
+        <button onclick="Dclear()">Clear</button>
+        <textarea id="mySavedModel" hidden></textarea>
+        <!--<div><button onclick="printDiagram()">Print Diagram Using SVG</button></div>-->
+        <div><button type="button" id="Export_button">Export Flowchart</button>
+        <script>
+            function download(name, text) {
+                var element = document.createElement('a');
+                element.style.display = 'none';
+                element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+                element.setAttribute('download', name);
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+            }
+
+            document.getElementById("Export_button").addEventListener("click", function () {
+                save();
+                var text = document.getElementById("mySavedModel").value;
+                var file = "Flowchart.json";
+                download(file, text);
+            }, false);
+        </script>
+        </div>
+        <div>
+            <input type="file" onchange="openFile(event)" id="plh" hidden/>
+            <script>
+                var openFile = function (event) {
+                    var input = event.target;
+
+                    var reader = new FileReader();
+                    reader.onload = function () {
+                        var data = reader.result;
+                        myDiagram.model = go.Model.fromJson(data);
+                    }
+                    reader.readAsDataURL(inp.files[0]);
+                };
+            </script>
+            <button type="button" id="newB">Import Flowchart</button>
+            <script>
+                const thisButton = document.getElementById("newB");
+                const realButton = document.getElementById("plh");
+
+                thisButton.addEventListener("click", function () { realButton.click() });
+
+            </script>
+        </div>
+        <h2 style="margin-top: 100px">Script Code</h2>
+        <textarea id="ScriptCode" style="height:400px; width: 100%; font-size: 11px; background-color:rgb(210,244,255)" placeholder="Script Code"></textarea>
+        <div>
+            <textarea id="INPUT" style="height:150px ; width: 49%; font-size:15px; background-color:rgb(210,244,255)" placeholder="Input"></textarea>
+            <textarea id="OUTPUT" style="height:150px; width: 49.5%; font-size:15px; background-color:rgb(210,244,255)" placeholder="Output" readonly></textarea>
+        </div>
+        <div>
+            <h2>Status</h2>
+            <textarea id="STATUS" style="height: 100px; width: 100%; font-size: 11px; background-color:rgb(210,244,255)" readonly></textarea>
+        </div>
+    </div>
+</body>
+</html>
