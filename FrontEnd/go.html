@@ -16,7 +16,7 @@
                         "undoManager.isEnabled": true
                     });
 
-            myDiagram.addDiagramListener("Modified", function (e) {
+            /*myDiagram.addDiagramListener("Modified", function (e) {
                 var button = document.getElementById("SaveButton");
                 if (button) button.disabled = !myDiagram.isModified;
                 var idx = document.title.indexOf("*");
@@ -25,7 +25,8 @@
                 } else {
                     if (idx >= 0) document.title = document.title.substr(0, idx);
                 }
-            });
+            });*/
+
 
             function nodeStyle() {
                 return [
@@ -33,6 +34,7 @@
                     {
                         locationSpot: go.Spot.Center
                     }
+
                 ];
             }
 
@@ -57,7 +59,8 @@
                         },
                         mouseLeave: function (e, port) {
                             port.fill = "transparent";
-                        }
+                        },
+                        fromMaxLinks: 1
                     });
             }
 
@@ -80,10 +83,12 @@
                 $(go.Node, "Spot", nodeStyle(),
                     $(go.Panel, "Spot",
                         $(go.Shape, "Rectangle",
-                            { desiredSize: new go.Size(100, 50), fill: "white", stroke: "black", strokeWidth: 2 },
+                            {
+                                desiredSize: new go.Size(100, 50), fill: "white", stroke: "black", strokeWidth: 2,
+                            },
                         ),
-                        $(go.TextBlock, "Process", textStyle(),
-                            new go.Binding("text")
+                        $(go.TextBlock, "Process", text_edit(),
+                            new go.Binding("text").makeTwoWay(), 
                         )
                     ),
                     makePort("T", go.Spot.Top, go.Spot.Top, false, true),
@@ -95,10 +100,12 @@
                 $(go.Node, "Spot", nodeStyle(),
                     $(go.Panel, "Spot",
                         $(go.Shape, "Parallelogram",
-                            { desiredSize: new go.Size(150, 50), fill: "rgb(185,185,185)", stroke: "black", strokeWidth: 2 },
+                            {
+                                desiredSize: new go.Size(150, 50), fill: "rgb(185,185,185)", stroke: "black", strokeWidth: 2,
+                            },
                         ),
-                        $(go.TextBlock, "Input", textStyle(),
-                            new go.Binding("text")
+                        $(go.TextBlock, "Input", text_edit(),
+                            new go.Binding("text").makeTwoWay(),
                         )
                     ),
                     makePort("T", go.Spot.Top, go.Spot.Top, false, true),
@@ -112,8 +119,8 @@
                         $(go.Shape, "Parallelogram",
                             { desiredSize: new go.Size(150, 50), fill: "rgb(185,185,185)", stroke: "black", strokeWidth: 2 },
                         ),
-                        $(go.TextBlock, "Output", textStyle(),
-                            new go.Binding("text")
+                        $(go.TextBlock, "Output", text_edit(),
+                            new go.Binding("text").makeTwoWay(), 
                         )
                     ),
                     makePort("T", go.Spot.Top, go.Spot.Top, false, true),
@@ -131,36 +138,36 @@
                                 stroke: "black",
                                 strokeWidth: 3.5
                             },
-                            new go.Binding("figure", "figure")
                         ),
                         $(go.TextBlock, text_edit(),
                             new go.Binding("text").makeTwoWay()
-                        ),
-                        $(go.TextBlock,
-                            {
-                                stroke: "green",
-                                text: 'T',
-                                alignment: go.Spot.Left,
-                                verticalAlignment: go.Spot.Top,
-                                height: 40,
-                                font: "25px"
-                            }
-                        ),
-                        $(go.TextBlock,
-                            {
-                                stroke: "red",
-                                text: 'F',
-                                alignment: go.Spot.Right,
-                                verticalAlignment: go.Spot.Top,
-                                height: 40,
-                                font: "25px"
-                            }
                         )
+                    ),
+                    $(go.TextBlock,
+                        {
+                            stroke: "green",
+                            text: 'T',
+                            alignment: go.Spot.Left,
+                            verticalAlignment: go.Spot.Top,
+                            height: 40,
+                            font: "25px"
+                        }
+                    ),
+                    $(go.TextBlock,
+                        {
+                            stroke: "red",
+                            text: 'F',
+                            alignment: go.Spot.Right,
+                            verticalAlignment: go.Spot.Top,
+                            height: 40,
+                            font: "25px"
+                        }
                     ),
                     makePort("T", go.Spot.Top, go.Spot.Top, false, true),
                     makePort("R", go.Spot.Right, go.Spot.Right, true, false),
                     makePort("L", go.Spot.Left, go.Spot.Left, true, false)
-                ));
+                )
+            );
 
             myDiagram.nodeTemplateMap.add("Start",
                 $(go.Node, "Spot", nodeStyle(),
@@ -220,31 +227,21 @@
             myDiagram.linkTemplate =
                 $(go.Link,
                     {
-                        routing: go.Link.AvoidsNodes,
+                        routing: go.Link.Orthogonal,
                         curve: go.Link.JumpOver,
-                        corner: 5, toShortLength: 4,
-                        relinkableFrom: true,
-                        relinkableTo: true,
-                        reshapable: true,
-                        resegmentable: true,
+                        corner: 5, toShortLength: 10,
                         mouseEnter: function (e, link) { link.findObject("HIGHLIGHT").stroke = "black"; },
                         mouseLeave: function (e, link) { link.findObject("HIGHLIGHT").stroke = "transparent"; },
                         selectionAdorned: false
                     },
                     new go.Binding("points").makeTwoWay(),
-                    $(go.Shape,  // the highlight shape, normally transparent
+                    $(go.Shape,
                         { isPanelMain: true, strokeWidth: 8, stroke: "transparent", name: "HIGHLIGHT" }),
-                    $(go.Shape,  // the link path shape
+                    $(go.Shape,
                         { isPanelMain: true, stroke: "white", strokeWidth: 3 },
                         new go.Binding("stroke", "isSelected", function (sel) { return "white"; }).ofObject()),
-                    $(go.Shape,  // the arrowhead
+                    $(go.Shape,
                         { toArrow: "standard", strokeWidth: 0, fill: "white" }),
-                    $(go.Panel, "Auto",  // the link label, normally not visible
-                        { visible: false, name: "LABEL", segmentIndex: 2, segmentFraction: 0.5 },
-                        new go.Binding("visible", "visible").makeTwoWay(),
-                        $(go.Shape, "RoundedRectangle",  // the label shape
-                            { fill: "#F8F8F8", strokeWidth: 0 }),
-                        new go.Binding("text").makeTwoWay())
                 );
 
 
@@ -266,9 +263,13 @@
                             { category: "Comment", text: "Comment" }
                         ])
                     });
-
+            myDiagram.model = $(go.GraphLinksModel,
+                {
+                    linkFromPortIdProperty: "fromPort",
+                    linkToPortIdProperty: "toPort"
+                }
+            );
         }
-
 
         function save() {
             document.getElementById("mySavedModel").value = myDiagram.model.toJson();
@@ -316,38 +317,39 @@
         <button onclick="Dclear()">Clear</button>
         <textarea id="mySavedModel" hidden></textarea>
         <!--<div><button onclick="printDiagram()">Print Diagram Using SVG</button></div>-->
-        <div><button type="button" id="Export_button">Export Flowchart</button>
-        <script>
-            function download(name, text) {
-                var element = document.createElement('a');
-                element.style.display = 'none';
-                element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-                element.setAttribute('download', name);
-                document.body.appendChild(element);
-                element.click();
-                document.body.removeChild(element);
-            }
+        <div>
+            <button type="button" id="Export_button">Export Flowchart</button>
+            <script>
+                function download(name, text) {
+                    var element = document.createElement('a');
+                    element.style.display = 'none';
+                    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+                    element.setAttribute('download', name);
+                    document.body.appendChild(element);
+                    element.click();
+                    document.body.removeChild(element);
+                }
 
-            document.getElementById("Export_button").addEventListener("click", function () {
-                save();
-                var text = document.getElementById("mySavedModel").value;
-                var file = "Flowchart.json";
-                download(file, text);
-            }, false);
-        </script>
+                document.getElementById("Export_button").addEventListener("click", function () {
+                    var text = myDiagram.model.toJson();
+                    var file = "Flowchart.json";
+                    download(file, text);
+                }, false);
+            </script>
         </div>
         <div>
-            <input type="file" onchange="openFile(event)" id="plh" hidden/>
+            <input type='file' onchange='openFile(event)' id="plh" hidden>
             <script>
                 var openFile = function (event) {
                     var input = event.target;
 
                     var reader = new FileReader();
                     reader.onload = function () {
-                        var data = reader.result;
-                        myDiagram.model = go.Model.fromJson(data);
-                    }
-                    reader.readAsDataURL(inp.files[0]);
+                        var text = reader.result;
+                        document.getElementById("mySavedModel").value = reader.result;
+                        myDiagram.model = go.Model.fromJSON(reader.result);
+                    };
+                    reader.readAsText(input.files[0]);
                 };
             </script>
             <button type="button" id="newB">Import Flowchart</button>
