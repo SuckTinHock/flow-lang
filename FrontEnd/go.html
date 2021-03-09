@@ -1,8 +1,10 @@
 ﻿<!DOCTYPE html>
 <html>
+
 <head>
     <title>Code Compiler</title>
     <script src="release/go.js"></script>
+    <script src="release/math.js"></script>
     <script src="Figure.js"></script>
     <link href='https://fonts.googleapis.com/css?family=Lato:300,400,700' rel='stylesheet' type='text/css'>
     <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One" rel="stylesheet" type="text/css">
@@ -88,7 +90,24 @@
                             },
                         ),
                         $(go.TextBlock, "Process", text_edit(),
-                            new go.Binding("text").makeTwoWay(), 
+                            new go.Binding("text").makeTwoWay(),
+                        )
+                    ),
+                    makePort("T", go.Spot.Top, go.Spot.Top, false, true),
+                    makePort("B", go.Spot.Bottom, go.Spot.Bottom, true, false)
+                )
+            )
+
+            myDiagram.nodeTemplateMap.add("Declare",
+                $(go.Node, "Spot", nodeStyle(),
+                    $(go.Panel, "Spot",
+                        $(go.Shape, "Rectangle",
+                            {
+                                desiredSize: new go.Size(100, 50), fill: "rgb(227,249,136)", stroke: "black", strokeWidth: 2,
+                            },
+                        ),
+                        $(go.TextBlock, "Declare", text_edit(),
+                            new go.Binding("text").makeTwoWay(),
                         )
                     ),
                     makePort("T", go.Spot.Top, go.Spot.Top, false, true),
@@ -120,7 +139,7 @@
                             { desiredSize: new go.Size(150, 50), fill: "rgb(185,185,185)", stroke: "black", strokeWidth: 2 },
                         ),
                         $(go.TextBlock, "Output", text_edit(),
-                            new go.Binding("text").makeTwoWay(), 
+                            new go.Binding("text").makeTwoWay(),
                         )
                     ),
                     makePort("T", go.Spot.Top, go.Spot.Top, false, true),
@@ -257,6 +276,7 @@
                             { category: "Start", text: "Start" },
                             { category: "Input", text: "Input" },
                             { category: "Process", text: "Process" },
+                            { category: "Declare", text: "Declare" },
                             { category: "Decision", text: "Decision" },
                             { category: "Output", text: "Output" },
                             { category: "End", text: "End" },
@@ -303,13 +323,15 @@
         } */
     </script>
 </head>
+
 <body onload="init()" style="background-color: #69758A">
     <div>
         <h1 style="font-family:Alfa Slab One; font-size: 50px">Welcome to Code Compiler</h1>
     </div>
     <div id="sample">
         <div style="width: 100%; display: flex; justify-content: space-between">
-            <div id="myPaletteDiv" style="width: 200px; margin-right: 2px; background-color: #282c34; overflow-y:auto"></div>
+            <div id="myPaletteDiv" style="width: 200px; margin-right: 2px; background-color: #282c34; overflow-y:auto">
+            </div>
             <div id="myDiagramDiv" style="flex-grow: 1; height: 1000px; background-color: #282c34;"></div>
         </div>
         <button id="SaveButton" onclick="save()">Save</button>
@@ -346,7 +368,7 @@
                     var reader = new FileReader();
                     reader.onload = function () {
                         var text = reader.result;
-                        document.getElementById("mySavedModel").value = reader.result;
+                        //document.getElementById("mySavedModel").value = reader.result;
                         myDiagram.model = go.Model.fromJSON(reader.result);
                     };
                     reader.readAsText(input.files[0]);
@@ -361,16 +383,95 @@
 
             </script>
         </div>
-        <h2 style="margin-top: 100px">Script Code</h2>
-        <textarea id="ScriptCode" style="height:400px; width: 100%; font-size: 11px; background-color:rgb(210,244,255)" placeholder="Script Code"></textarea>
         <div>
-            <textarea id="INPUT" style="height:150px ; width: 49%; font-size:15px; background-color:rgb(210,244,255)" placeholder="Input"></textarea>
-            <textarea id="OUTPUT" style="height:150px; width: 49.5%; font-size:15px; background-color:rgb(210,244,255)" placeholder="Output" readonly></textarea>
+            <button type="button" id="Run_flowchart">Run Flowchart</button>
+            <script>
+                function execute(jsonFlow) {
+                    var $ = go.GraphObject.make;
+                    var parser = math.parser();
+                    var stdout = "";
+                    var flowchart = $(go.Diagram);
+                    flowchart.model = go.Model.fromJson(jsonFlow);
+                    var current;
+                    for (var i = flowchart.nodes; i.next();) {
+                        if (i.value.category == "Start") {
+                            current = i.value;
+                            break;
+                        }
+                    }
+                    let vars = {};
+                    while (current.category != "End") {
+                        switch (current.category) {
+                            case "Start":
+                                var nextNode = current.findLinksOutOf("B");
+                                nextNode.next();
+                                current = nextNode.value.toNode;
+                                break;
+                            case "Process":
+                                var name = current.data["text"];
+                                parser.evaluate(name);
+                                var nextNode = current.findLinksOutOf("B");
+                                nextNode.next();
+                                current = nextNode.value.toNode;
+                                break;
+                            case "Declare":
+                                var name = current.data["text"];
+                                parser.evaluate(name);
+                                var nextNode = current.findLinksOutOf("B");
+                                nextNode.next();
+                                current = nextNode.value.toNode;
+                                break;
+                            case "Input":
+                                var name = current.data["text"];
+                                parser.evaluate(name + " = " +
+                                    prompt("Please input value for " + name));
+                                var nextNode = current.findLinksOutOf("B");
+                                nextNode.next();
+                                current = nextNode.value.toNode;
+                                break;
+                            case "Output":
+                                var name = current.data["text"];
+                                alert(parser.evaluate(name));
+                                var nextNode = current.findLinksOutOf("B");
+                                nextNode.next();
+                                current = nextNode.value.toNode;
+                                break;
+                            case "Decision":
+                                var name = current.data["text"];
+                                if (parser.evaluate(name)) {
+                                    var nextNode = current.findLinksOutOf("L");
+                                }
+                                else {
+                                    var nextNode = current.findLinksOutOf("R");
+                                }
+                                nextNode.next();
+                                current = nextNode.value.toNode;
+                                break;
+                        }
+                    }
+                    alert("DONE!");
+                }
+
+                document.getElementById("Run_flowchart").addEventListener("click", function () {
+                    execute(myDiagram.model.toJson());
+                });
+            </script>
+        </div>
+        <h2 style="margin-top: 100px">Script Code</h2>
+        <textarea id="ScriptCode" style="height:400px; width: 100%; font-size: 11px; background-color:rgb(210,244,255)"
+            placeholder="Script Code"></textarea>
+        <div>
+            <textarea id="INPUT" style="height:150px ; width: 49%; font-size:15px; background-color:rgb(210,244,255)"
+                placeholder="Input"></textarea>
+            <textarea id="OUTPUT" style="height:150px; width: 49.5%; font-size:15px; background-color:rgb(210,244,255)"
+                placeholder="Output" readonly></textarea>
         </div>
         <div>
             <h2>Status</h2>
-            <textarea id="STATUS" style="height: 100px; width: 100%; font-size: 11px; background-color:rgb(210,244,255)" readonly></textarea>
+            <textarea id="STATUS" style="height: 100px; width: 100%; font-size: 11px; background-color:rgb(210,244,255)"
+                readonly></textarea>
         </div>
     </div>
 </body>
+
 </html>
