@@ -703,10 +703,12 @@
                                 source += "\t";
                             source += ("while " + name + ":\n");
                             var temp = nextNodeTrue(node);
-                            while (temp.category != "End" && temp != actualNextNode[node]) {
+                            ++tabs;
+                            while (temp.category != "End" && temp != node && temp != actualNextNode[node]) {
                                 if (temp.category == "Decision") temp = handleDecision(temp);
                                 else temp = handleNormal(temp);
                             }
+                            --tabs;
                             return actualNextNode[node];
                         case "WhileNot":
                             var name = node.data["text"];
@@ -715,7 +717,7 @@
                             source += ("while not " + name + ":\n");
                             var temp = nextNodeFalse(node);
                             ++tabs;
-                            while (temp.category != "End" && temp != actualNextNode[node]) {
+                            while (temp.category != "End" && temp != node && temp != actualNextNode[node]) {
                                 if (temp.category == "Decision") temp = handleDecision(temp);
                                 else temp = handleNormal(temp);
                             }
@@ -743,6 +745,7 @@
                             else if (typeDecision[i.value] == "WhileNot")
                                 actualNextNode[i.value] = nextNodeTrue(i.value);
                             else actualNextNode[i.value] = converged;
+                            console.log(actualNextNode[i.value].data.text);
                         }
                     }
                     current = start;
