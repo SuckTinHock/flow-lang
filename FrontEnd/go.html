@@ -339,9 +339,7 @@
                     else file = ans + ".json";
                     download(file, text);
                 }, false);
-            </script>
-            <button type="button" id="parseFlowchart">Parse Flowchart</button>
-            <script>
+
                 function parseGraph() {
                     var form = JSON.parse(myDiagram.model.toJson());
                     var graph = new Object();
@@ -357,10 +355,6 @@
                     });
                     return graph;
                 }
-
-                document.getElementById("parseFlowchart").addEventListener("click", function () {
-                    var g = parseGraph();
-                }, false);
             </script>
         </div>
         <div>
@@ -516,10 +510,38 @@
                 var erased = [];
                 var nodes_data = [];
                 let vars = {};
+                var stack = [];
+                var whileNotNodes = new Set();
+                var whileNodes = new Set();
+                var ifNodes = new Set();
+                var usedNodes = new Set();
+                var codeNode = new Object();
+                var actualNextNode = new Object();
+                var typeDecision = new Object();
+
+
+                function initTranspile() {
+                    parser = math.parser();
+                    source = "";
+                    tabs = 0;
+                    dem = "\t";
+                    nodes = 0;
+                    erased = [];
+                    nodes_data = [];
+                    vars = {};
+                    stack = [];
+                    whileNotNodes = new Set();
+                    whileNodes = new Set();
+                    ifNodes = new Set();
+                    usedNodes = new Set();
+                    codeNode = new Object();
+                    actualNextNode = new Object();
+                    typeDecision = new Object();
+                }
 
                 function getFlowchart(jsonFlow) {
-                    var $ = go.GraphObject.make;
-                    var flowchart = $(go.Diagram);
+                    $ = go.GraphObject.make;
+                    flowchart = $(go.Diagram);
                     flowchart.model = go.Model.fromJson(jsonFlow);
                 }
 
@@ -548,39 +570,165 @@
                     return node;
                 }
 
-                let nodeVisitedTrue = new Set();
-                let nodeVisitedFalse = new Set();
-                function checkIfWhile(node) {
-                    var tempT = nextNodeTrue(node), tempR = nextNodeFalse(node);
-                    while (tempT.category != "End") {
-                        nodeVisitedTrue.add(tempT);
-
+                function findConvergedDecision(node) {
+                    var nodeT = nextNodeTrue(node), nodeF = nextNodeFalse(node), result;
+                    var visitedNodes = new Set();
+                    while (nodeT.category != "End") {
+                        visitedNodes.add(nodeT);
+                        if (nodeT == node) {
+                            typeDecision[node] = "While";
+                            return node;
+                        }
+                        if (nodeT.category == "Decision") {
+                            nodeT = findConvergedDecision(nodeT);
+                        }
+                        else nodeT = nextNode(nodeT);
                     }
+                    visitedNodes.add(nodeT);
+                    while (!visitedNodes.has(nodeF)) {
+                        if (visitedNodes.has(nodeF)) {
+                            result = nodeF;
+                        }
+                        if (nodeF == node) {
+                            typeDecision[node] = "WhileNot";
+                            whileNotNodes.add(node);
+                            return node;
+                        }
+                        if (nodeT.category == "Decision") {
+                            nodeF = findConvergedDecision(nodeF);
+                        }
+                        else nodeF = nextNode(nodeF);
+                    }
+                    result = nodeF;
+                    nodeT = nextNodeTrue(node), nodeF = nextNodeFalse(node);
+                    if (nodeT == result && nodeF == result) {
+                        typeDecision[node] = "Process";
+                    }
+                    else
+                        if (nodeT == result && nodeF != result) {
+                            typeDecision[node] = "If";
+                        }
+                        else
+                            if (nodeT != result && nodeF == result) {
+                                typeDecision[node] = "IfNot";
+                            }
+                            else typeDecision[node] = "IfElse";
+                    return result;
                 }
 
-                function readCode(start, finish, link, tabs) {
-                    var nxtNode = start.findLinksOutOf(link);
-                    nxtNode.next();
-                    var current = nxtNode.value.toNode;
-                    while (!checkSameNode(current, finish)) {
-                        switch (current.category) {
-                            case "Decision":
-                                var newFinish;
-                                var result = checkIfWhile(current);
-                                for (var i = 0; i < result.length; i++) {
+                function handleNormal(node) {
+                    switch (node.category) {
+                        case "Start":
+                            break;
+                        case "End":
+                            break;
+                        case "Process":
+                            var name = node.data["text"];
+                            for (var i = 0; i < tabs; ++i)
+                                source += "\t";
+                            source += (name + "\n");
+                            break;
+                        case "Input":
+                            var name = node.data["text"];
+                            for (var i = 0; i < tabs; ++i)
+                                source += "\t";
+                            source += (name + " = int(input())\n");
+                            break;
+                        case "Output":
+                            var name = node.data["text"];
+                            for (var i = 0; i < tabs; ++i)
+                                source += "\t";
+                            source += ("print(" + name + ")\n");
+                            break;
+                    }
+                    return nextNode(node);
+                }
 
-                                }
+                function handleDecision(node) {
+                    switch (typeDecision[node]) {
+                        case "Process":
+                            return actualNextNode[node];
+                        case "If":
+                            var name = node.data["text"];
+                            for (var i = 0; i < tabs; ++i)
+                                source += "\t";
+                            source += ("if " + name + ":\n");
+                            var temp = nextNodeTrue(node);
+                            ++tabs;
+                            while (temp.category != "End" && temp != actualNextNode[node]) {
+                                if (temp.category == "Decision") temp = handleDecision(temp);
+                                else temp = handleNormal(temp);
+                            }
+                            --tabs;
+                            return actualNextNode[node];
+                        case "IfNot":
+                            var name = node.data["text"];
+                            for (var i = 0; i < tabs; ++i)
+                                source += "\t";
+                            source += ("if not " + name + ":\n");
+                            var temp = nextNodeFalse(node);
+                            ++tabs;
+                            while (temp.category != "End" && temp != actualNextNode[node]) {
+                                if (temp.category == "Decision") temp = handleDecision(temp);
+                                else temp = handleNormal(temp);
+                            }
+                            --tabs;
+                            return actualNextNode[node];
+                        case "IfElse":
+                            var name = node.data["text"];
+                            for (var i = 0; i < tabs; ++i)
+                                source += "\t";
+                            source += ("if " + name + ":\n");
+                            var temp = nextNodeTrue(node);
+                            ++tabs;
+                            while (temp.category != "End" && temp != actualNextNode[node]) {
+                                if (temp.category == "Decision") temp = handleDecision(temp);
+                                else temp = handleNormal(temp);
+                            }
+                            --tabs;
+                            for (var i = 0; i < tabs; ++i)
+                                source += "\t";
+                            source += ("else:\n");
+                            temp = nextNodeFalse(node);
+                            ++tabs;
+                            while (temp.category != "End" && temp != actualNextNode[node]) {
+                                if (temp.category == "Decision") temp = handleDecision(temp);
+                                else temp = handleNormal(temp);
+                            }
+                            --tabs;
+                            return actualNextNode[node];
+                        case "While":
+                            var name = node.data["text"];
+                            for (var i = 0; i < tabs; ++i)
+                                source += "\t";
+                            source += ("while " + name + ":\n");
+                            var temp = nextNodeTrue(node);
+                            while (temp.category != "End" && temp != actualNextNode[node]) {
+                                if (temp.category == "Decision") temp = handleDecision(temp);
+                                else temp = handleNormal(temp);
+                            }
+                            return actualNextNode[node];
+                        case "WhileNot":
+                            var name = node.data["text"];
+                            for (var i = 0; i < tabs; ++i)
+                                source += "\t";
+                            source += ("while not " + name + ":\n");
+                            var temp = nextNodeFalse(node);
+                            ++tabs;
+                            while (temp.category != "End" && temp != actualNextNode[node]) {
+                                if (temp.category == "Decision") temp = handleDecision(temp);
+                                else temp = handleNormal(temp);
+                            }
+                            --tabs;
+                            return actualNextNode[node];
 
-                                break;
-                            case "Process":
-                                source += (tabs + "if")
-                        }
                     }
                 }
 
                 function transpilePy(jsonFlow) {
+                    initTranspile();
                     getFlowchart(jsonFlow);
-                    var start, finish;
+                    var start, finish, current;
                     for (var i = flowchart.nodes; i.next();) {
                         if (i.value.category == "Start") {
                             start = i.value;
@@ -588,9 +736,63 @@
                         if (i.value.category == "End") {
                             finish = i.value;
                         }
+                        if (i.value.category == "Decision") {
+                            var converged = findConvergedDecision(i.value);
+                            if (typeDecision[i.value] == "While")
+                                actualNextNode[i.value] = nextNodeFalse(i.value);
+                            else if (typeDecision[i.value] == "WhileNot")
+                                actualNextNode[i.value] = nextNodeTrue(i.value);
+                            else actualNextNode[i.value] = converged;
+                        }
                     }
-                    readCode(start, finish, "");
+                    current = start;
+                    tabs = 0;
+                    while (current.category != "End") {
+                        switch (current.category) {
+                            case "Start":
+                                current = nextNode(current);
+                                break;
+                            case "Process":
+                                var name = current.data["text"];
+                                for (var i = 0; i < tabs; ++i)
+                                    source += "\t";
+                                source += (name + "\n");
+                                current = nextNode(current);
+                                break;
+                            case "Input":
+                                var name = current.data["text"];
+                                for (var i = 0; i < tabs; ++i)
+                                    source += "\t";
+                                source += (name + " = int(input())\n");
+                                current = nextNode(current);
+                                break;
+                            case "Output":
+                                var name = current.data["text"];
+                                for (var i = 0; i < tabs; ++i)
+                                    source += "\t";
+                                source += ("print(" + name + ")\n");
+                                current = nextNode(current);
+                                break;
+                            case "Decision":
+                                current = handleDecision(current);
+                                break;
+                        }
+                    }
+                    return source;
                 }
+
+                document.getElementById("convert_py").addEventListener("click", function () {
+                    document.getElementById("ScriptCode").value = transpilePy(myDiagram.model.toJson());
+                });
+
+                document.getElementById("export_py").addEventListener("click", function () {
+                    var ans = prompt("Your Project Name: ");
+                    var text = transpilePy(myDiagram.model.toJson());
+                    var file;
+                    if (ans == "" || ans == null) file = "CodeFromFlowchart.py";
+                    else file = ans + ".py";
+                    download(file, text);
+                }, false);
             </script>
         </div>
         <div>
