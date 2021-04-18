@@ -332,8 +332,11 @@
                 }
 
                 document.getElementById("Export_button").addEventListener("click", function () {
+                    var ans = prompt("Your Project Name : ");
                     var text = myDiagram.model.toJson();
-                    var file = "Flowchart.json";
+                    var file;
+                    if (ans == "" || ans == null) file = "Flowchart.json";
+                    else file = ans + ".json";
                     download(file, text);
                 }, false);
             </script>
