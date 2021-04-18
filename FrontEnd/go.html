@@ -77,7 +77,8 @@
                 return {
                     font: "bold 11pt Lato, Helvetica, Arial, sans-serif",
                     stroke: "black",
-                    editable: true
+                    editable: true,
+                    isMultiline: false
                 }
             }
 
@@ -188,6 +189,23 @@
                 )
             );
 
+            myDiagram.nodeTemplateMap.add("Loop",
+                $(go.Node, "Spot", nodeStyle(),
+                    $(go.Panel, "Spot",
+                        $(go.Shape, "Trapezoid",
+                            { fill: "white" }
+                        ),
+                        $(go.TextBlock, "While", text_edit(),
+                            new go.Binding("text").makeTwoWay()
+                        )
+                    ),
+                    makePort("T", go.Spot.Top, go.Spot.Top, false, true),
+                    makePort("B", go.Spot.Bottom, go.Spot.Bottom, true, false),
+                    makePort("L", go.Spot.Left, go.Spot.Left, false, true),
+                    makePort("R", go.Spot.Right, go.Spot.Right, true, false)
+                )
+            )
+
             myDiagram.nodeTemplateMap.add("Start",
                 $(go.Node, "Spot", nodeStyle(),
                     $(go.Panel, "Spot",
@@ -278,6 +296,7 @@
                             { category: "Process", text: "Process" },
                             { category: "Declare", text: "Declare" },
                             { category: "Decision", text: "Decision" },
+                            { category: "Loop", text: "While" },
                             { category: "Output", text: "Output" },
                             { category: "End", text: "End" },
                             { category: "Comment", text: "Comment" }
@@ -421,6 +440,17 @@
                                 nextNode.next();
                                 current = nextNode.value.toNode;
                                 break;
+                            case "Loop":
+                                var name = current.data["text"];
+                                if (parser.evaluate(name)) {
+                                    var nextNode = current.findLinksOutOf("L");
+                                }
+                                else {
+                                    var nextNode = current.findLinksOutOf("R");
+                                }
+                                nextNode.next();
+                                current = nextNode.value.toNode;
+                                break;
                             case "Input":
                                 var name = current.data["text"];
                                 parser.evaluate(name + " = " +
@@ -431,7 +461,7 @@
                                 break;
                             case "Output":
                                 var name = current.data["text"];
-                                alert(parser.evaluate(name));
+                                stdout += (parser.evaluate(name));
                                 var nextNode = current.findLinksOutOf("B");
                                 nextNode.next();
                                 current = nextNode.value.toNode;
@@ -449,17 +479,110 @@
                                 break;
                         }
                     }
-                    alert("DONE!");
+                    return stdout;
                 }
 
                 document.getElementById("Run_flowchart").addEventListener("click", function () {
-                    execute(myDiagram.model.toJson());
+                    document.getElementById("OUTPUT").value = execute(myDiagram.model.toJson());
                 });
             </script>
         </div>
-        <h2 style="margin-top: 100px">Script Code</h2>
-        <textarea id="ScriptCode" style="height:400px; width: 100%; font-size: 11px; background-color:rgb(210,244,255)"
-            placeholder="Script Code"></textarea>
+        <h2 style="margin-top: 100px">C++ Code</h2>
+        <div>
+            <textarea id="ScriptCode"
+                style="height:400px; width: 100%; font-size: 11px; background-color:rgb(210,244,255)"
+                placeholder="Script Code"></textarea>
+            <button type="button" id="convert_py">Convert to Python Code</button>
+            <button type="button" id="export_py">Export Python Code</button>
+            <script>
+                // not finished
+                var $;
+                var parser = math.parser();
+                var source = "";
+                var tabs = "";
+                var flowchart;
+                var dem = "\t";
+                var nodes = 0;
+                var erased = [];
+                var nodes_data = [];
+                let vars = {};
+
+                function getFlowchart(jsonFlow) {
+                    var $ = go.GraphObject.make;
+                    var flowchart = $(go.Diagram);
+                    flowchart.model = go.Model.fromJson(jsonFlow);
+                }
+
+                function checkSameNode(nodeA, nodeB) {
+                    return (nodeA.data["key"] == nodeB.data["key"]);
+                }
+
+                function nextNode(node) {
+                    var nxtNode = node.findLinksOutOf("B");
+                    nxtNode.next();
+                    node = nxtNode.value.toNode;
+                    return node;
+                }
+
+                function nextNodeTrue(node) {
+                    var nxtNode = node.findLinksOutOf("L");
+                    nxtNode.next();
+                    node = nxtNode.value.toNode;
+                    return node;
+                }
+
+                function nextNodeFalse(node) {
+                    var nxtNode = node.findLinksOutOf("R");
+                    nxtNode.next();
+                    node = nxtNode.value.toNode;
+                    return node;
+                }
+
+                let nodeVisitedTrue = new Set();
+                let nodeVisitedFalse = new Set();
+                function checkIfWhile(node) {
+                    var tempT = nextNodeTrue(node), tempR = nextNodeFalse(node);
+                    while (tempT.category != "End") {
+                        nodeVisitedTrue.add(tempT);
+
+                    }
+                }
+
+                function readCode(start, finish, link, tabs) {
+                    var nxtNode = start.findLinksOutOf(link);
+                    nxtNode.next();
+                    var current = nxtNode.value.toNode;
+                    while (!checkSameNode(current, finish)) {
+                        switch (current.category) {
+                            case "Decision":
+                                var newFinish;
+                                var result = checkIfWhile(current);
+                                for (var i = 0; i < result.length; i++) {
+                                    source += (tabs + result[i][3] + )
+                                }
+
+                                break;
+                            case "Process":
+                                source += (tabs + "if")
+                        }
+                    }
+                }
+
+                function transpilePy(jsonFlow) {
+                    getFlowchart(jsonFlow);
+                    var start, finish;
+                    for (var i = flowchart.nodes; i.next();) {
+                        if (i.value.category == "Start") {
+                            start = i.value;
+                        }
+                        if (i.value.category == "End") {
+                            finish = i.value;
+                        }
+                    }
+                    readCode(start, finish, "");
+                }
+            </script>
+        </div>
         <div>
             <textarea id="INPUT" style="height:150px ; width: 49%; font-size:15px; background-color:rgb(210,244,255)"
                 placeholder="Input"></textarea>
