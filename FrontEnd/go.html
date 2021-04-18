@@ -164,7 +164,7 @@
                 $(go.Node, "Spot", nodeStyle(),
                     $(go.Panel, "Spot",
                         $(go.Shape, "Trapezoid",
-                            { fill: "white", desiredSize: new go.Size(150,50) }
+                            { fill: "white", desiredSize: new go.Size(150, 50) }
                         ),
                         $(go.TextBlock, "While", text_edit(),
                             new go.Binding("text").makeTwoWay()
@@ -199,7 +199,7 @@
                         $(go.TextBlock, "End",
                             {
                                 font: "bold 20pt Lato, Helvetica, Arial, sans-serif",
-                                stroke: "white", 
+                                stroke: "white",
                             },
                             new go.Binding("text"))
                     ),
@@ -299,7 +299,7 @@
                 y += printSize.height;
             }
             setTimeout(function () { svgWindow.print(); }, 1);
-        } 
+        }
     </script>
 </head>
 
@@ -338,6 +338,28 @@
                     if (ans == "" || ans == null) file = "Flowchart.json";
                     else file = ans + ".json";
                     download(file, text);
+                }, false);
+            </script>
+            <button type="button" id="parseFlowchart">Parse Flowchart</button>
+            <script>
+                function parseGraph() {
+                    var form = JSON.parse(myDiagram.model.toJson());
+                    var graph = new Object();
+                    form.linkDataArray.forEach(function (arrayItem) {
+                        var f = arrayItem["from"];
+                        var t = arrayItem["to"];
+                        if (graph[f]) {
+                            graph[f].push(t);
+                        }
+                        else {
+                            graph[f] = [t];
+                        }
+                    });
+                    return graph;
+                }
+
+                document.getElementById("parseFlowchart").addEventListener("click", function () {
+                    var g = parseGraph();
                 }, false);
             </script>
         </div>
