@@ -121,7 +121,7 @@
                     $(go.Panel, "Spot",
                         $(go.Shape, "Parallelogram",
                             {
-                                desiredSize: new go.Size(150, 50), fill: "rgb(185,185,185)", stroke: "black", strokeWidth: 2,
+                                desiredSize: new go.Size(150, 50), fill: "rgb(185,225,0)", stroke: "black", strokeWidth: 2,
                             },
                         ),
                         $(go.TextBlock, "Input", text_edit(),
@@ -137,7 +137,7 @@
                 $(go.Node, "Spot", nodeStyle(),
                     $(go.Panel, "Spot",
                         $(go.Shape, "Parallelogram",
-                            { desiredSize: new go.Size(150, 50), fill: "rgb(185,185,185)", stroke: "black", strokeWidth: 2 },
+                            { desiredSize: new go.Size(150, 50), fill: "rgb(0,185,225)", stroke: "black", strokeWidth: 2 },
                         ),
                         $(go.TextBlock, "Output", text_edit(),
                             new go.Binding("text").makeTwoWay(),
@@ -293,6 +293,7 @@
                         model: new go.GraphLinksModel([
                             { category: "Start", text: "Start" },
                             { category: "Input", text: "Input" },
+                            { category: "File", text: "File" },
                             { category: "Process", text: "Process" },
                             { category: "Declare", text: "Declare" },
                             { category: "Decision", text: "Decision" },
@@ -405,81 +406,106 @@
         <div>
             <button type="button" id="Run_flowchart">Run Flowchart</button>
             <script>
+                function isNumeric(str) {
+                    var ord = str.charCodeAt(0);
+                    return (ord >= 48 && ord <= 57);
+                }
+
                 function execute(jsonFlow) {
-                    var $ = go.GraphObject.make;
-                    var parser = math.parser();
-                    var stdout = "";
-                    var flowchart = $(go.Diagram);
-                    flowchart.model = go.Model.fromJson(jsonFlow);
-                    var current;
-                    for (var i = flowchart.nodes; i.next();) {
-                        if (i.value.category == "Start") {
-                            current = i.value;
-                            break;
+                    try {
+                        var txt = document.getElementById("INPUT").value;
+                        var $ = go.GraphObject.make;
+                        var parser = math.parser();
+                        var stdout = "";
+                        var flowchart = $(go.Diagram);
+                        flowchart.model = go.Model.fromJson(jsonFlow);
+                        var current;
+                        for (var i = flowchart.nodes; i.next();) {
+                            if (i.value.category == "Start") {
+                                current = i.value;
+                                break;
+                            }
                         }
-                    }
-                    let vars = {};
-                    while (current.category != "End") {
-                        switch (current.category) {
-                            case "Start":
-                                var nextNode = current.findLinksOutOf("B");
-                                nextNode.next();
-                                current = nextNode.value.toNode;
-                                break;
-                            case "Process":
-                                var name = current.data["text"];
-                                parser.evaluate(name);
-                                var nextNode = current.findLinksOutOf("B");
-                                nextNode.next();
-                                current = nextNode.value.toNode;
-                                break;
-                            case "Declare":
-                                var name = current.data["text"];
-                                parser.evaluate(name);
-                                var nextNode = current.findLinksOutOf("B");
-                                nextNode.next();
-                                current = nextNode.value.toNode;
-                                break;
-                            case "Loop":
-                                var name = current.data["text"];
-                                if (parser.evaluate(name)) {
-                                    var nextNode = current.findLinksOutOf("L");
-                                }
-                                else {
-                                    var nextNode = current.findLinksOutOf("R");
-                                }
-                                nextNode.next();
-                                current = nextNode.value.toNode;
-                                break;
-                            case "Input":
-                                var name = current.data["text"];
-                                parser.evaluate(name + " = " +
-                                    prompt("Please input value for " + name));
-                                var nextNode = current.findLinksOutOf("B");
-                                nextNode.next();
-                                current = nextNode.value.toNode;
-                                break;
-                            case "Output":
-                                var name = current.data["text"];
-                                stdout += (parser.evaluate(name));
-                                var nextNode = current.findLinksOutOf("B");
-                                nextNode.next();
-                                current = nextNode.value.toNode;
-                                break;
-                            case "Decision":
-                                var name = current.data["text"];
-                                if (parser.evaluate(name)) {
-                                    var nextNode = current.findLinksOutOf("L");
-                                }
-                                else {
-                                    var nextNode = current.findLinksOutOf("R");
-                                }
-                                nextNode.next();
-                                current = nextNode.value.toNode;
-                                break;
+                        let vars = {};
+                        while (current.category != "End") {
+                            switch (current.category) {
+                                case "Start":
+                                    var nextNode = current.findLinksOutOf("B");
+                                    nextNode.next();
+                                    current = nextNode.value.toNode;
+                                    break;
+                                case "Process":
+                                    var name = current.data["text"];
+                                    parser.evaluate(name);
+                                    var nextNode = current.findLinksOutOf("B");
+                                    nextNode.next();
+                                    current = nextNode.value.toNode;
+                                    break;
+                                case "Declare":
+                                    var name = current.data["text"];
+                                    parser.evaluate(name);
+                                    var nextNode = current.findLinksOutOf("B");
+                                    nextNode.next();
+                                    current = nextNode.value.toNode;
+                                    break;
+                                case "Loop":
+                                    var name = current.data["text"];
+                                    if (parser.evaluate(name)) {
+                                        var nextNode = current.findLinksOutOf("L");
+                                    }
+                                    else {
+                                        var nextNode = current.findLinksOutOf("R");
+                                    }
+                                    nextNode.next();
+                                    current = nextNode.value.toNode;
+                                    break;
+                                case "Input":
+                                    var name = current.data["text"];
+                                    var number = 0;
+                                    if (txt == null || txt == '') {
+                                        parser.evaluate(name + " = " +
+                                            prompt("Please input value for " + name));
+                                    }
+                                    else {
+                                        while (txt != null && txt != '') {
+                                            if (!isNumeric(txt.substring(0, 1))) {
+                                                txt = txt.slice(1);
+                                                break;
+                                            }
+                                            number = number * 10 + parseInt(txt.substring(0, 1));
+                                            txt = txt.slice(1);
+                                        }
+                                        parser.evaluate(name + " = " + number);
+                                    }
+                                    var nextNode = current.findLinksOutOf("B");
+                                    nextNode.next();
+                                    current = nextNode.value.toNode;
+                                    break;
+                                case "Output":
+                                    var name = current.data["text"];
+                                    stdout += (parser.evaluate(name));
+                                    var nextNode = current.findLinksOutOf("B");
+                                    nextNode.next();
+                                    current = nextNode.value.toNode;
+                                    break;
+                                case "Decision":
+                                    var name = current.data["text"];
+                                    if (parser.evaluate(name)) {
+                                        var nextNode = current.findLinksOutOf("L");
+                                    }
+                                    else {
+                                        var nextNode = current.findLinksOutOf("R");
+                                    }
+                                    nextNode.next();
+                                    current = nextNode.value.toNode;
+                                    break;
+                            }
                         }
+                        return stdout;
                     }
-                    return stdout;
+                    catch (err) {
+                        alert(err);
+                    };
                 }
 
                 document.getElementById("Run_flowchart").addEventListener("click", function () {
@@ -558,7 +584,7 @@
                                 var newFinish;
                                 var result = checkIfWhile(current);
                                 for (var i = 0; i < result.length; i++) {
-                                    source += (tabs + result[i][3] + )
+
                                 }
 
                                 break;
