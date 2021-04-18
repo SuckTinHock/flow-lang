@@ -18,18 +18,6 @@
                         "undoManager.isEnabled": true
                     });
 
-            /*myDiagram.addDiagramListener("Modified", function (e) {
-                var button = document.getElementById("SaveButton");
-                if (button) button.disabled = !myDiagram.isModified;
-                var idx = document.title.indexOf("*");
-                if (myDiagram.isModified) {
-                    if (idx < 0) document.title += "*";
-                } else {
-                    if (idx >= 0) document.title = document.title.substr(0, idx);
-                }
-            });*/
-
-
             function nodeStyle() {
                 return [
                     new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
@@ -87,27 +75,10 @@
                     $(go.Panel, "Spot",
                         $(go.Shape, "Rectangle",
                             {
-                                desiredSize: new go.Size(100, 50), fill: "white", stroke: "black", strokeWidth: 2,
+                                desiredSize: new go.Size(100, 50), fill: "#fff200", stroke: "black", strokeWidth: 2,
                             },
                         ),
                         $(go.TextBlock, "Process", text_edit(),
-                            new go.Binding("text").makeTwoWay(),
-                        )
-                    ),
-                    makePort("T", go.Spot.Top, go.Spot.Top, false, true),
-                    makePort("B", go.Spot.Bottom, go.Spot.Bottom, true, false)
-                )
-            )
-
-            myDiagram.nodeTemplateMap.add("Declare",
-                $(go.Node, "Spot", nodeStyle(),
-                    $(go.Panel, "Spot",
-                        $(go.Shape, "Rectangle",
-                            {
-                                desiredSize: new go.Size(100, 50), fill: "rgb(227,249,136)", stroke: "black", strokeWidth: 2,
-                            },
-                        ),
-                        $(go.TextBlock, "Declare", text_edit(),
                             new go.Binding("text").makeTwoWay(),
                         )
                     ),
@@ -155,8 +126,8 @@
                             {
                                 desiredSize: new go.Size(160, 80),
                                 fill: "rgb(185,185,185)",
-                                stroke: "black",
-                                strokeWidth: 3.5
+                                stroke: "#005429",
+                                strokeWidth: 6
                             },
                         ),
                         $(go.TextBlock, text_edit(),
@@ -193,7 +164,7 @@
                 $(go.Node, "Spot", nodeStyle(),
                     $(go.Panel, "Spot",
                         $(go.Shape, "Trapezoid",
-                            { fill: "white" }
+                            { fill: "white", desiredSize: new go.Size(150,50) }
                         ),
                         $(go.TextBlock, "While", text_edit(),
                             new go.Binding("text").makeTwoWay()
@@ -210,8 +181,11 @@
                 $(go.Node, "Spot", nodeStyle(),
                     $(go.Panel, "Spot",
                         $(go.Shape, "RoundedRectangle",
-                            { desiredSize: new go.Size(150, 50), fill: "white", stroke: "rgba(0,0,0,0.1)", strokeWidth: 10 }),
-                        $(go.TextBlock, "Start", textStyle(),
+                            { desiredSize: new go.Size(150, 50), fill: "black", stroke: "red", strokeWidth: 5 }),
+                        $(go.TextBlock, "Start", {
+                            font: "bold 20pt Lato, Helvetica, Arial, sans-serif",
+                            stroke: "white",
+                        },
                             new go.Binding("text"))
                     ),
                     makePort("B", go.Spot.Bottom, go.Spot.Bottom, true, false)
@@ -221,30 +195,16 @@
                 $(go.Node, "Spot", nodeStyle(),
                     $(go.Panel, "Spot",
                         $(go.Shape, "RoundedRectangle",
-                            { desiredSize: new go.Size(150, 50), fill: "white", stroke: "rgba(0,0,0,0.1)", strokeWidth: 10 }),
-                        $(go.TextBlock, "End", textStyle(),
+                            { desiredSize: new go.Size(150, 50), fill: "black", stroke: "#ff6666", strokeWidth: 5 }),
+                        $(go.TextBlock, "End",
+                            {
+                                font: "bold 20pt Lato, Helvetica, Arial, sans-serif",
+                                stroke: "white", 
+                            },
                             new go.Binding("text"))
                     ),
                     makePort("T", go.Spot.Top, go.Spot.Top, false, true),
                 ));
-
-            go.Shape.defineFigureGenerator("File", function (shape, w, h) {
-                var geo = new go.Geometry();
-                var fig = new go.PathFigure(0, 0, true); // starting point
-                geo.add(fig);
-                fig.add(new go.PathSegment(go.PathSegment.Line, .75 * w, 0));
-                fig.add(new go.PathSegment(go.PathSegment.Line, w, .25 * h));
-                fig.add(new go.PathSegment(go.PathSegment.Line, w, h));
-                fig.add(new go.PathSegment(go.PathSegment.Line, 0, h).close());
-                var fig2 = new go.PathFigure(.75 * w, 0, false);
-                geo.add(fig2);
-                // The Fold
-                fig2.add(new go.PathSegment(go.PathSegment.Line, .75 * w, .25 * h));
-                fig2.add(new go.PathSegment(go.PathSegment.Line, w, .25 * h));
-                geo.spot1 = new go.Spot(0, .25);
-                geo.spot2 = go.Spot.BottomRight;
-                return geo;
-            });
 
             myDiagram.nodeTemplateMap.add("Comment",
                 $(go.Node, "Auto", nodeStyle(),
@@ -276,9 +236,9 @@
                         { isPanelMain: true, strokeWidth: 8, stroke: "transparent", name: "HIGHLIGHT" }),
                     $(go.Shape,
                         { isPanelMain: true, stroke: "white", strokeWidth: 3 },
-                        new go.Binding("stroke", "isSelected", function (sel) { return "white"; }).ofObject()),
+                        new go.Binding("stroke", "isSelected", function (sel) { return "#b920df"; }).ofObject()),
                     $(go.Shape,
-                        { toArrow: "standard", strokeWidth: 0, fill: "white" }),
+                        { toArrow: "standard", strokeWidth: 0, fill: "#b920df" }),
                 );
 
 
@@ -291,18 +251,17 @@
 
                         nodeTemplateMap: myDiagram.nodeTemplateMap,
                         model: new go.GraphLinksModel([
-                            { category: "Start", text: "Start" },
-                            { category: "Input", text: "Input" },
-                            { category: "File", text: "File" },
-                            { category: "Process", text: "Process" },
-                            { category: "Declare", text: "Declare" },
-                            { category: "Decision", text: "Decision" },
-                            { category: "Loop", text: "While" },
-                            { category: "Output", text: "Output" },
-                            { category: "End", text: "End" },
+                            { category: "Start", text: "START" },
+                            { category: "Input", text: "INPUT" },
+                            { category: "Process", text: "PROCESS" },
+                            { category: "Decision", text: "DECISION" },
+                            { category: "Loop", text: "WHILE" },
+                            { category: "Output", text: "OUTPUT" },
+                            { category: "End", text: "END" },
                             { category: "Comment", text: "Comment" }
                         ])
                     });
+
             myDiagram.model = $(go.GraphLinksModel,
                 {
                     linkFromPortIdProperty: "fromPort",
@@ -324,7 +283,7 @@
             document.getElementById('ScriptCode').value = '';
         }
 
-        /*function printDiagram() {
+        function printDiagram() {
             var svgWindow = window.open();
             var printSize = new go.Size(700, 960);
             var bnds = myDiagram.documentBounds;
@@ -340,25 +299,25 @@
                 y += printSize.height;
             }
             setTimeout(function () { svgWindow.print(); }, 1);
-        } */
+        } 
     </script>
 </head>
 
-<body onload="init()" style="background-color: #69758A">
+<body onload="init()" style="background-color: #1e1e1e">
     <div>
-        <h1 style="font-family:Alfa Slab One; font-size: 50px">Welcome to Code Compiler</h1>
+        <h1 style="font-family:Alfa Slab One; font-size: 50px; color:#3be2ff">Welcome to FlowLang</h1>
     </div>
     <div id="sample">
         <div style="width: 100%; display: flex; justify-content: space-between">
-            <div id="myPaletteDiv" style="width: 200px; margin-right: 2px; background-color: #282c34; overflow-y:auto">
+            <div id="myPaletteDiv" style="width: 200px; margin-right: 2px; background-color: #001f40; overflow-y:auto">
             </div>
-            <div id="myDiagramDiv" style="flex-grow: 1; height: 1000px; background-color: #282c34;"></div>
+            <div id="myDiagramDiv" style="flex-grow: 1; height: 800px; background-color: #001f40;"></div>
         </div>
         <button id="SaveButton" onclick="save()">Save</button>
         <button onclick="load()">Load</button>
         <button onclick="Dclear()">Clear</button>
         <textarea id="mySavedModel" hidden></textarea>
-        <!--<div><button onclick="printDiagram()">Print Diagram Using SVG</button></div>-->
+        <div><button onclick="printDiagram()">Print Diagram Using SVG</button></div>
         <div>
             <button type="button" id="Export_button">Export Flowchart</button>
             <script>
@@ -513,10 +472,10 @@
                 });
             </script>
         </div>
-        <h2 style="margin-top: 100px">C++ Code</h2>
+        <h2 style="color:white">Python Code</h2>
         <div>
             <textarea id="ScriptCode"
-                style="height:400px; width: 100%; font-size: 11px; background-color:rgb(210,244,255)"
+                style="height:200px; width: 100%; font-size: 11px; background-color:rgb(210,244,255)"
                 placeholder="Script Code"></textarea>
             <button type="button" id="convert_py">Convert to Python Code</button>
             <button type="button" id="export_py">Export Python Code</button>
@@ -610,15 +569,10 @@
             </script>
         </div>
         <div>
-            <textarea id="INPUT" style="height:150px ; width: 49%; font-size:15px; background-color:rgb(210,244,255)"
+            <textarea id="INPUT" style="height:80px ; width: 49%; font-size:15px; background-color:rgb(210,244,255)"
                 placeholder="Input"></textarea>
-            <textarea id="OUTPUT" style="height:150px; width: 49.5%; font-size:15px; background-color:rgb(210,244,255)"
+            <textarea id="OUTPUT" style="height:80px; width: 49.5%; font-size:15px; background-color:rgb(210,244,255)"
                 placeholder="Output" readonly></textarea>
-        </div>
-        <div>
-            <h2>Status</h2>
-            <textarea id="STATUS" style="height: 100px; width: 100%; font-size: 11px; background-color:rgb(210,244,255)"
-                readonly></textarea>
         </div>
     </div>
 </body>
