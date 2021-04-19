@@ -310,22 +310,6 @@
                 else file = ans + ".json";
                 download(file, text);
             }, false);
-
-            function parseGraph() {
-                var form = JSON.parse(myDiagram.model.toJson());
-                var graph = new Object();
-                form.linkDataArray.forEach(function (arrayItem) {
-                    var f = arrayItem["from"];
-                    var t = arrayItem["to"];
-                    if (graph[f]) {
-                        graph[f].push(t);
-                    }
-                    else {
-                        graph[f] = [t];
-                    }
-                });
-                return graph;
-            }
         </script>
         <input type='file' onchange='openFile(event)' id="plh" hidden>
         <script>
@@ -473,8 +457,8 @@
         <h2 style="color:#3be2ff">Python Code</h2>
         <div>
             <textarea id="ScriptCode"
-                      style="height:200px; width: 100%; font-size: 15px; background-color:rgb(210,244,255)"
-                      placeholder="Script Code"></textarea>
+                style="height:200px; width: 100%; font-size: 15px; background-color:rgb(210,244,255)"
+                placeholder="Script Code"></textarea>
             <button type="button" id="convert_py">Convert to Python Code</button>
             <button type="button" id="export_py">Export Python Code</button>
             <script>
@@ -497,6 +481,7 @@
                 var codeNode = new Object();
                 var actualNextNode = new Object();
                 var typeDecision = new Object();
+                var parNode = new Object();
 
 
                 function initTranspile() {
@@ -516,6 +501,25 @@
                     codeNode = new Object();
                     actualNextNode = new Object();
                     typeDecision = new Object();
+                    parNode = new Object();
+                }
+
+                function parseGraph() {
+                    var form = JSON.parse(myDiagram.model.toJson());
+                    var graph = new Object();
+                    form.linkDataArray.forEach(function (arrayItem) {
+                        var f = arrayItem["from"];
+                        var t = arrayItem["to"];
+                        if (graph[f]) {
+                            graph[f].push(t);
+                        }
+                        else {
+                            graph[f] = [t];
+                        }
+                        if (parNode[t]) parNode[t] += 1;
+                        else parNode[t] = 1;
+                    });
+                    return graph;
                 }
 
                 function getFlowchart(jsonFlow) {
@@ -549,50 +553,75 @@
                     return node;
                 }
 
-                function findConvergedDecision(node) {
-                    var nodeT = nextNodeTrue(node), nodeF = nextNodeFalse(node), result;
-                    var visitedNodes = new Set();
-                    while (nodeT.category != "End") {
-                        visitedNodes.add(nodeT);
-                        if (nodeT == node) {
-                            typeDecision[node] = "While";
-                            return node;
+                function nextNodeDecision(node) {
+                    if (actualNextNode[node]) return actualNextNode[node];
+                    if (parNode[node.data.key] == 1) {
+                        var nodeT = nextNodeTrue(node), nodeF = nextNodeFalse(node), result;
+                        var visitedNodes = new Set();
+                        while (nodeT.category != "End") {
+                            visitedNodes.add(nodeT);
+                            if (nodeT.category == "Decision") {
+                                nodeT = nextNodeDecision(nodeT);
+                            }
+                            else nodeT = nextNode(nodeT);
                         }
-                        if (nodeT.category == "Decision") {
-                            nodeT = findConvergedDecision(nodeT);
+                        while (nodeF.category != "End") {
+                            if (visitedNodes.has(nodeF)) {
+                                result = nodeF;
+                                break;
+                            }
+                            visitedNodes.add(nodeF);
+                            if (nodeF.category == "Decision") {
+                                nodeF = nextNodeDecision(nodeF);
+                            }
+                            else nodeF = nextNode(nodeF);
                         }
-                        else nodeT = nextNode(nodeT);
-                    }
-                    visitedNodes.add(nodeT);
-                    while (!visitedNodes.has(nodeF)) {
-                        if (visitedNodes.has(nodeF)) {
-                            result = nodeF;
-                        }
-                        if (nodeF == node) {
-                            typeDecision[node] = "WhileNot";
-                            whileNotNodes.add(node);
-                            return node;
-                        }
-                        if (nodeT.category == "Decision") {
-                            nodeF = findConvergedDecision(nodeF);
-                        }
-                        else nodeF = nextNode(nodeF);
-                    }
-                    result = nodeF;
-                    nodeT = nextNodeTrue(node), nodeF = nextNodeFalse(node);
-                    if (nodeT == result && nodeF == result) {
-                        typeDecision[node] = "Process";
-                    }
-                    else
-                        if (nodeT == result && nodeF != result) {
-                            typeDecision[node] = "If";
+                        nodeT = nextNodeTrue(node), nodeF = nextNodeFalse(node);
+                        if (nodeT == result && nodeF == result) {
+                            typeDecision[node] = "Process";
                         }
                         else
-                            if (nodeT != result && nodeF == result) {
-                                typeDecision[node] = "IfNot";
+                            if (nodeT == result && nodeF != result) {
+                                typeDecision[node] = "If";
                             }
-                            else typeDecision[node] = "IfElse";
-                    return result;
+                            else
+                                if (nodeT != result && nodeF == result) {
+                                    typeDecision[node] = "IfNot";
+                                }
+                                else typeDecision[node] = "IfElse";
+                        actualNextNode[node] = result;
+                        return result;
+                    }
+                    else if (parNode[node.data.key] == 2) {
+                        var nodeT = nextNodeTrue(node);
+                        var whileT = false;
+                        var visitedNodes = new Set();
+                        visitedNodes.add(node);
+                        while (nodeT.category != "End") {
+                            if (visitedNodes.has(nodeT)) {
+                                whileT = true;
+                                break;
+                            }
+                            visitedNodes.add(nodeT);
+                            if (nodeT.category == "Decision") {
+                                nodeT = nextNodeDecision(nodeT);
+                            }
+                            else nodeT = nextNode(nodeT);
+                        }
+                        if (whileT) {
+                            typeDecision[node] = "While";
+                            actualNextNode[node] = nextNodeFalse(node);
+                            return actualNextNode[node];
+                        }
+                        else {
+                            typeDecision[node] = "WhileNot";
+                            actualNextNode[node] = nextNodeTrue(node);
+                            return actualNextNode[node];
+                        }
+                    }
+                    else {
+                        throw "Illegal flowchart!";
+                    }
                 }
 
                 function handleNormal(node) {
@@ -707,60 +736,60 @@
                 }
 
                 function transpilePy(jsonFlow) {
-                    initTranspile();
-                    getFlowchart(jsonFlow);
-                    var start, finish, current;
-                    for (var i = flowchart.nodes; i.next();) {
-                        if (i.value.category == "Start") {
-                            start = i.value;
+                    try {
+                        initTranspile(); parseGraph();
+                        getFlowchart(jsonFlow);
+                        var start, finish, current;
+                        for (var i = flowchart.nodes; i.next();) {
+                            if (i.value.category == "Start") {
+                                start = i.value;
+                            }
+                            if (i.value.category == "End") {
+                                finish = i.value;
+                            }
+                            if (i.value.category == "Decision") {
+                                actualNextNode[i.value] = nextNodeDecision(i.value);
+                            }
                         }
-                        if (i.value.category == "End") {
-                            finish = i.value;
+                        current = start;
+                        tabs = 0;
+                        while (current.category != "End") {
+                            switch (current.category) {
+                                case "Start":
+                                    current = nextNode(current);
+                                    break;
+                                case "Process":
+                                    var name = current.data["text"];
+                                    for (var i = 0; i < tabs; ++i)
+                                        source += "\t";
+                                    source += (name + "\n");
+                                    current = nextNode(current);
+                                    break;
+                                case "Input":
+                                    var name = current.data["text"];
+                                    for (var i = 0; i < tabs; ++i)
+                                        source += "\t";
+                                    source += (name + " = int(input())\n");
+                                    current = nextNode(current);
+                                    break;
+                                case "Output":
+                                    var name = current.data["text"];
+                                    for (var i = 0; i < tabs; ++i)
+                                        source += "\t";
+                                    source += ("print(" + name + ")\n");
+                                    current = nextNode(current);
+                                    break;
+                                case "Decision":
+                                    current = handleDecision(current);
+                                    break;
+                            }
                         }
-                        if (i.value.category == "Decision") {
-                            var converged = findConvergedDecision(i.value);
-                            if (typeDecision[i.value] == "While")
-                                actualNextNode[i.value] = nextNodeFalse(i.value);
-                            else if (typeDecision[i.value] == "WhileNot")
-                                actualNextNode[i.value] = nextNodeTrue(i.value);
-                            else actualNextNode[i.value] = converged;
-                            console.log(actualNextNode[i.value].data.text);
-                        }
+                        return source;
+
                     }
-                    current = start;
-                    tabs = 0;
-                    while (current.category != "End") {
-                        switch (current.category) {
-                            case "Start":
-                                current = nextNode(current);
-                                break;
-                            case "Process":
-                                var name = current.data["text"];
-                                for (var i = 0; i < tabs; ++i)
-                                    source += "\t";
-                                source += (name + "\n");
-                                current = nextNode(current);
-                                break;
-                            case "Input":
-                                var name = current.data["text"];
-                                for (var i = 0; i < tabs; ++i)
-                                    source += "\t";
-                                source += (name + " = int(input())\n");
-                                current = nextNode(current);
-                                break;
-                            case "Output":
-                                var name = current.data["text"];
-                                for (var i = 0; i < tabs; ++i)
-                                    source += "\t";
-                                source += ("print(" + name + ")\n");
-                                current = nextNode(current);
-                                break;
-                            case "Decision":
-                                current = handleDecision(current);
-                                break;
-                        }
+                    catch (err) {
+                        alert(err);
                     }
-                    return source;
                 }
 
                 document.getElementById("convert_py").addEventListener("click", function () {
@@ -779,9 +808,9 @@
         </div>
         <div>
             <textarea id="INPUT" style="height:80px ; width: 49%; font-size:20px; background-color:rgb(210,244,255)"
-                      placeholder="Input"></textarea>
+                placeholder="Input"></textarea>
             <textarea id="OUTPUT" style="height:80px; width: 49%; font-size:20px; background-color:rgb(210,244,255)"
-                      placeholder="Output" readonly></textarea>
+                placeholder="Output" readonly></textarea>
         </div>
     </div>
 </body>
