@@ -289,6 +289,175 @@
     <div>
         <h1 style="font-family:Alfa Slab One; font-size: 50px; color:#3be2ff">Welcome to FlowLang</h1>
     </div>
+    <div>
+        <button type="button" id="Export_button">Export Flowchart</button>
+        <script>
+            function download(name, text) {
+                var element = document.createElement('a');
+                element.style.display = 'none';
+                element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+                element.setAttribute('download', name);
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+            }
+
+            document.getElementById("Export_button").addEventListener("click", function () {
+                var ans = prompt("Your Project Name : ");
+                var text = myDiagram.model.toJson();
+                var file;
+                if (ans == "" || ans == null) file = "Flowchart.json";
+                else file = ans + ".json";
+                download(file, text);
+            }, false);
+
+            function parseGraph() {
+                var form = JSON.parse(myDiagram.model.toJson());
+                var graph = new Object();
+                form.linkDataArray.forEach(function (arrayItem) {
+                    var f = arrayItem["from"];
+                    var t = arrayItem["to"];
+                    if (graph[f]) {
+                        graph[f].push(t);
+                    }
+                    else {
+                        graph[f] = [t];
+                    }
+                });
+                return graph;
+            }
+        </script>
+        <input type='file' onchange='openFile(event)' id="plh" hidden>
+        <script>
+            var openFile = function (event) {
+                var input = event.target;
+
+                var reader = new FileReader();
+                reader.onload = function () {
+                    var text = reader.result;
+                    //document.getElementById("mySavedModel").value = reader.result;
+                    myDiagram.model = go.Model.fromJSON(reader.result);
+                };
+                reader.readAsText(input.files[0]);
+            };
+        </script>
+        <button type="button" id="newB">Import Flowchart</button>
+        <script>
+            const thisButton = document.getElementById("newB");
+            const realButton = document.getElementById("plh");
+
+            thisButton.addEventListener("click", function () { realButton.click() });
+
+        </script>
+        <button type="button" id="Run_flowchart">Run Flowchart</button>
+        <script>
+            function isNumeric(str) {
+                var ord = str.charCodeAt(0);
+                return (ord >= 48 && ord <= 57);
+            }
+
+            function execute(jsonFlow) {
+                try {
+                    var txt = document.getElementById("INPUT").value;
+                    var $ = go.GraphObject.make;
+                    var parser = math.parser();
+                    var stdout = "";
+                    var flowchart = $(go.Diagram);
+                    flowchart.model = go.Model.fromJson(jsonFlow);
+                    var current;
+                    for (var i = flowchart.nodes; i.next();) {
+                        if (i.value.category == "Start") {
+                            current = i.value;
+                            break;
+                        }
+                    }
+                    let vars = {};
+                    while (current.category != "End") {
+                        switch (current.category) {
+                            case "Start":
+                                var nextNode = current.findLinksOutOf("B");
+                                nextNode.next();
+                                current = nextNode.value.toNode;
+                                break;
+                            case "Process":
+                                var name = current.data["text"];
+                                parser.evaluate(name);
+                                var nextNode = current.findLinksOutOf("B");
+                                nextNode.next();
+                                current = nextNode.value.toNode;
+                                break;
+                            case "Declare":
+                                var name = current.data["text"];
+                                parser.evaluate(name);
+                                var nextNode = current.findLinksOutOf("B");
+                                nextNode.next();
+                                current = nextNode.value.toNode;
+                                break;
+                            case "Loop":
+                                var name = current.data["text"];
+                                if (parser.evaluate(name)) {
+                                    var nextNode = current.findLinksOutOf("L");
+                                }
+                                else {
+                                    var nextNode = current.findLinksOutOf("R");
+                                }
+                                nextNode.next();
+                                current = nextNode.value.toNode;
+                                break;
+                            case "Input":
+                                var name = current.data["text"];
+                                var number = 0;
+                                if (txt == null || txt == '') {
+                                    parser.evaluate(name + " = " +
+                                        prompt("Please input value for " + name));
+                                }
+                                else {
+                                    while (txt != null && txt != '') {
+                                        if (!isNumeric(txt.substring(0, 1))) {
+                                            txt = txt.slice(1);
+                                            break;
+                                        }
+                                        number = number * 10 + parseInt(txt.substring(0, 1));
+                                        txt = txt.slice(1);
+                                    }
+                                    parser.evaluate(name + " = " + number);
+                                }
+                                var nextNode = current.findLinksOutOf("B");
+                                nextNode.next();
+                                current = nextNode.value.toNode;
+                                break;
+                            case "Output":
+                                var name = current.data["text"];
+                                stdout += (parser.evaluate(name));
+                                var nextNode = current.findLinksOutOf("B");
+                                nextNode.next();
+                                current = nextNode.value.toNode;
+                                break;
+                            case "Decision":
+                                var name = current.data["text"];
+                                if (parser.evaluate(name)) {
+                                    var nextNode = current.findLinksOutOf("L");
+                                }
+                                else {
+                                    var nextNode = current.findLinksOutOf("R");
+                                }
+                                nextNode.next();
+                                current = nextNode.value.toNode;
+                                break;
+                        }
+                    }
+                    return stdout;
+                }
+                catch (err) {
+                    alert(err);
+                };
+            }
+
+            document.getElementById("Run_flowchart").addEventListener("click", function () {
+                document.getElementById("OUTPUT").value = execute(myDiagram.model.toJson());
+            });
+        </script>
+    </div>
     <div id="sample">
         <div style="width: 100%; display: flex; justify-content: space-between">
             <div id="myPaletteDiv" style="width: 200px; margin-right: 2px; background-color: #001f40; overflow-y:auto">
@@ -300,184 +469,12 @@
         <button onclick="Dclear()">Clear</button>
         <textarea id="mySavedModel" hidden></textarea>
         <div><button onclick="printDiagram()">Print Diagram Using SVG</button></div>
-        <div>
-            <button type="button" id="Export_button">Export Flowchart</button>
-            <script>
-                function download(name, text) {
-                    var element = document.createElement('a');
-                    element.style.display = 'none';
-                    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-                    element.setAttribute('download', name);
-                    document.body.appendChild(element);
-                    element.click();
-                    document.body.removeChild(element);
-                }
 
-                document.getElementById("Export_button").addEventListener("click", function () {
-                    var ans = prompt("Your Project Name : ");
-                    var text = myDiagram.model.toJson();
-                    var file;
-                    if (ans == "" || ans == null) file = "Flowchart.json";
-                    else file = ans + ".json";
-                    download(file, text);
-                }, false);
-
-                function parseGraph() {
-                    var form = JSON.parse(myDiagram.model.toJson());
-                    var graph = new Object();
-                    form.linkDataArray.forEach(function (arrayItem) {
-                        var f = arrayItem["from"];
-                        var t = arrayItem["to"];
-                        if (graph[f]) {
-                            graph[f].push(t);
-                        }
-                        else {
-                            graph[f] = [t];
-                        }
-                    });
-                    return graph;
-                }
-            </script>
-        </div>
-        <div>
-            <input type='file' onchange='openFile(event)' id="plh" hidden>
-            <script>
-                var openFile = function (event) {
-                    var input = event.target;
-
-                    var reader = new FileReader();
-                    reader.onload = function () {
-                        var text = reader.result;
-                        //document.getElementById("mySavedModel").value = reader.result;
-                        myDiagram.model = go.Model.fromJSON(reader.result);
-                    };
-                    reader.readAsText(input.files[0]);
-                };
-            </script>
-            <button type="button" id="newB">Import Flowchart</button>
-            <script>
-                const thisButton = document.getElementById("newB");
-                const realButton = document.getElementById("plh");
-
-                thisButton.addEventListener("click", function () { realButton.click() });
-
-            </script>
-        </div>
-        <div>
-            <button type="button" id="Run_flowchart">Run Flowchart</button>
-            <script>
-                function isNumeric(str) {
-                    var ord = str.charCodeAt(0);
-                    return (ord >= 48 && ord <= 57);
-                }
-
-                function execute(jsonFlow) {
-                    try {
-                        var txt = document.getElementById("INPUT").value;
-                        var $ = go.GraphObject.make;
-                        var parser = math.parser();
-                        var stdout = "";
-                        var flowchart = $(go.Diagram);
-                        flowchart.model = go.Model.fromJson(jsonFlow);
-                        var current;
-                        for (var i = flowchart.nodes; i.next();) {
-                            if (i.value.category == "Start") {
-                                current = i.value;
-                                break;
-                            }
-                        }
-                        let vars = {};
-                        while (current.category != "End") {
-                            switch (current.category) {
-                                case "Start":
-                                    var nextNode = current.findLinksOutOf("B");
-                                    nextNode.next();
-                                    current = nextNode.value.toNode;
-                                    break;
-                                case "Process":
-                                    var name = current.data["text"];
-                                    parser.evaluate(name);
-                                    var nextNode = current.findLinksOutOf("B");
-                                    nextNode.next();
-                                    current = nextNode.value.toNode;
-                                    break;
-                                case "Declare":
-                                    var name = current.data["text"];
-                                    parser.evaluate(name);
-                                    var nextNode = current.findLinksOutOf("B");
-                                    nextNode.next();
-                                    current = nextNode.value.toNode;
-                                    break;
-                                case "Loop":
-                                    var name = current.data["text"];
-                                    if (parser.evaluate(name)) {
-                                        var nextNode = current.findLinksOutOf("L");
-                                    }
-                                    else {
-                                        var nextNode = current.findLinksOutOf("R");
-                                    }
-                                    nextNode.next();
-                                    current = nextNode.value.toNode;
-                                    break;
-                                case "Input":
-                                    var name = current.data["text"];
-                                    var number = 0;
-                                    if (txt == null || txt == '') {
-                                        parser.evaluate(name + " = " +
-                                            prompt("Please input value for " + name));
-                                    }
-                                    else {
-                                        while (txt != null && txt != '') {
-                                            if (!isNumeric(txt.substring(0, 1))) {
-                                                txt = txt.slice(1);
-                                                break;
-                                            }
-                                            number = number * 10 + parseInt(txt.substring(0, 1));
-                                            txt = txt.slice(1);
-                                        }
-                                        parser.evaluate(name + " = " + number);
-                                    }
-                                    var nextNode = current.findLinksOutOf("B");
-                                    nextNode.next();
-                                    current = nextNode.value.toNode;
-                                    break;
-                                case "Output":
-                                    var name = current.data["text"];
-                                    stdout += (parser.evaluate(name));
-                                    var nextNode = current.findLinksOutOf("B");
-                                    nextNode.next();
-                                    current = nextNode.value.toNode;
-                                    break;
-                                case "Decision":
-                                    var name = current.data["text"];
-                                    if (parser.evaluate(name)) {
-                                        var nextNode = current.findLinksOutOf("L");
-                                    }
-                                    else {
-                                        var nextNode = current.findLinksOutOf("R");
-                                    }
-                                    nextNode.next();
-                                    current = nextNode.value.toNode;
-                                    break;
-                            }
-                        }
-                        return stdout;
-                    }
-                    catch (err) {
-                        alert(err);
-                    };
-                }
-
-                document.getElementById("Run_flowchart").addEventListener("click", function () {
-                    document.getElementById("OUTPUT").value = execute(myDiagram.model.toJson());
-                });
-            </script>
-        </div>
         <h2 style="color:#3be2ff">Python Code</h2>
         <div>
             <textarea id="ScriptCode"
-                style="height:200px; width: 100%; font-size: 15px; background-color:rgb(210,244,255)"
-                placeholder="Script Code"></textarea>
+                      style="height:200px; width: 100%; font-size: 15px; background-color:rgb(210,244,255)"
+                      placeholder="Script Code"></textarea>
             <button type="button" id="convert_py">Convert to Python Code</button>
             <button type="button" id="export_py">Export Python Code</button>
             <script>
@@ -782,9 +779,9 @@
         </div>
         <div>
             <textarea id="INPUT" style="height:80px ; width: 49%; font-size:20px; background-color:rgb(210,244,255)"
-                placeholder="Input"></textarea>
+                      placeholder="Input"></textarea>
             <textarea id="OUTPUT" style="height:80px; width: 49.5%; font-size:20px; background-color:rgb(210,244,255)"
-                placeholder="Output" readonly></textarea>
+                      placeholder="Output" readonly></textarea>
         </div>
     </div>
 </body>
