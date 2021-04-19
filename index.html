@@ -582,11 +582,11 @@
                         }
                         else
                             if (nodeT == result && nodeF != result) {
-                                typeDecision[node] = "If";
+                                typeDecision[node] = "IfNot";
                             }
                             else
                                 if (nodeT != result && nodeF == result) {
-                                    typeDecision[node] = "IfNot";
+                                    typeDecision[node] = "If";
                                 }
                                 else typeDecision[node] = "IfElse";
                         actualNextNode[node] = result;
@@ -749,6 +749,7 @@
                             }
                             if (i.value.category == "Decision") {
                                 actualNextNode[i.value] = nextNodeDecision(i.value);
+                                //console.log(typeDecision[i.value]);
                             }
                         }
                         current = start;
