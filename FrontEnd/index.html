@@ -125,7 +125,7 @@
                         $(go.Shape, "Diamond",
                             {
                                 desiredSize: new go.Size(160, 80),
-                                fill: "#913300",
+                                fill: "#828282",
                                 stroke: "#005429",
                                 strokeWidth: 6
                             },
@@ -159,23 +159,6 @@
                     makePort("L", go.Spot.Left, go.Spot.Left, true, false)
                 )
             );
-
-            myDiagram.nodeTemplateMap.add("Loop",
-                $(go.Node, "Spot", nodeStyle(),
-                    $(go.Panel, "Spot",
-                        $(go.Shape, "Trapezoid",
-                            { fill: "white", desiredSize: new go.Size(150, 50) }
-                        ),
-                        $(go.TextBlock, "While", text_edit(),
-                            new go.Binding("text").makeTwoWay()
-                        )
-                    ),
-                    makePort("T", go.Spot.Top, go.Spot.Top, false, true),
-                    makePort("B", go.Spot.Bottom, go.Spot.Bottom, true, false),
-                    makePort("L", go.Spot.Left, go.Spot.Left, false, true),
-                    makePort("R", go.Spot.Right, go.Spot.Right, true, false)
-                )
-            )
 
             myDiagram.nodeTemplateMap.add("Start",
                 $(go.Node, "Spot", nodeStyle(),
@@ -255,7 +238,6 @@
                             { category: "Input", text: "INPUT" },
                             { category: "Process", text: "PROCESS" },
                             { category: "Decision", text: "DECISION" },
-                            { category: "Loop", text: "WHILE" },
                             { category: "Output", text: "OUTPUT" },
                             { category: "End", text: "END" },
                             { category: "Comment", text: "Comment" }
