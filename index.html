@@ -336,8 +336,7 @@
         <button type="button" id="Run_flowchart">Run Flowchart</button>
         <script>
             function isNumeric(str) {
-                var ord = str.charCodeAt(0);
-                return (ord >= 48 && ord <= 57);
+                return (parseFloat(str) && Number(str) != NaN);
             }
 
             function execute(jsonFlow) {
@@ -462,7 +461,6 @@
             <button type="button" id="convert_py">Convert to Python Code</button>
             <button type="button" id="export_py">Export Python Code</button>
             <script>
-                // not finished
                 var $;
                 var parser = math.parser();
                 var source = "";
